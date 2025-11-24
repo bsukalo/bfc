@@ -1,8 +1,8 @@
-use core::panic;
 use std::env;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::prelude::*;
+use std::process::Command;
 use std::time::Instant;
 
 /*
@@ -26,7 +26,7 @@ use std::time::Instant;
 */
 
 fn generate_base(path: &str) -> Result<(), std::io::Error> {
-    let mut file = File::create(path)?;
+    let mut file = File::create(format!("{}.s", path))?;
     let base = "\
 .intel_syntax noprefix
 
@@ -54,7 +54,10 @@ fn compile_brainfuck(bf_file: &String, path: &String) -> Result<(), std::io::Err
     let mut file = File::open(bf_file)?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;
-    let mut output = OpenOptions::new().append(true).open(path).unwrap();
+    let mut output = OpenOptions::new()
+        .append(true)
+        .open(format!("{}.s", path))
+        .unwrap();
     let mut loop_counter: usize;
     let mut stack_top: usize;
     let mut loop_stack: Vec<usize> = vec![];
@@ -89,7 +92,11 @@ fn compile_brainfuck(bf_file: &String, path: &String) -> Result<(), std::io::Err
                     closed_loops.push(stack_top);
                     loop_stack.pop();
                 } else {
-                    panic!("Syntax error! You cannot close a loop which has not been opened.");
+                    eprintln!("Syntax error! You cannot close a loop which has not been opened.");
+                    if let Err(e) = std::fs::remove_file(format!("{}.s", path)) {
+                        eprintln!("Unexpected error occurred: {}", e);
+                    }
+                    std::process::exit(1);
                 }
                 writeln!(
                     output,
@@ -110,7 +117,11 @@ fn compile_brainfuck(bf_file: &String, path: &String) -> Result<(), std::io::Err
     }
 
     if loop_stack.len() > 0 {
-        panic!("Syntax error! You have declared a loop which is never closed.")
+        eprintln!("Syntax error! You have declared a loop which is never closed.");
+        if let Err(e) = std::fs::remove_file(format!("{}.s", path)) {
+            eprintln!("Unexpected error occurred: {}", e);
+        }
+        std::process::exit(1);
     }
     writeln!(
         output,
@@ -122,49 +133,48 @@ fn compile_brainfuck(bf_file: &String, path: &String) -> Result<(), std::io::Err
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    let brainfuck_file = args.iter().nth(1);
-    let output_file = args.iter().last();
 
-    if args.len() < 3 {
-        panic!("\nUSAGE: bfc [PATH TO BRAINFUCK FILE].bf [PATH TO OUTPUT FILE].s\n")
+    if args.len() != 3 {
+        eprintln!("Error: Invalid argument(s).\nUSAGE: bfc [BRAINFUCK FILE].bf [OUTPUT FILE]");
+        std::process::exit(1);
     }
 
+    let brainfuck_file = &args[1];
+    let output_file = &args[2];
     let now = Instant::now();
 
-    match output_file {
-        Some(op_file) => {
-            println!("{}", op_file);
-            match generate_base(op_file) {
-                Ok(_) => {}
-                Err(e) => {
-                    panic!(
-                        "Unexpected error occured: {}\n\nUSAGE: bfc [PATH TO BRAINFUCK FILE].bf [PATH TO OUTPUT FILE].s\n",
-                        e
-                    );
-                }
-            }
-            match brainfuck_file {
-                Some(bf_file) => match compile_brainfuck(bf_file, op_file) {
-                    Ok(_) => {
-                        println!(
-                            "Program compiled in {} miliseconds.",
-                            now.elapsed().as_millis()
-                        );
-                    }
-                    Err(e) => {
-                        panic!(
-                            "Unexpected error occured: {}\n\nUSAGE: bfc [PATH TO BRAINFUCK FILE].bf [PATH TO OUTPUT FILE].s\n",
-                            e
-                        );
-                    }
-                },
-                None => {
-                    panic!("Brainfuck file not specified.");
-                }
-            };
-        }
-        None => {
-            panic!("Output file not specified.");
-        }
+    if let Err(e) = generate_base(&output_file) {
+        eprintln!("Error creating output file: {}", e);
+        std::process::exit(1);
+    }
+
+    if let Err(e) = compile_brainfuck(&brainfuck_file, &output_file) {
+        eprintln!("Error compiling brainfuck: {}", e);
+        std::process::exit(1);
+    }
+
+    println!(
+        "Program compiled in {} millisecond(s).",
+        now.elapsed().as_millis()
+    );
+
+    let cmd = Command::new("gcc")
+        .arg(format!("{}.s", output_file))
+        .arg("-o")
+        .arg(output_file)
+        .arg("-nostdlib")
+        .arg("-static")
+        .output()
+        .expect("Assembling/linking failed! Do you have GCC installed?");
+
+    if !cmd.status.success() {
+        eprintln!("GCC failed to assemble/link:");
+        eprintln!("{}", String::from_utf8_lossy(&cmd.stderr));
+        std::process::exit(1);
+    }
+
+    if let Err(e) = std::fs::remove_file(format!("{}.s", output_file)) {
+        eprintln!("Unexpected error occurred: {}", e);
+        std::process::exit(1);
     }
 }
