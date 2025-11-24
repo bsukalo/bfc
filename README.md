@@ -20,7 +20,7 @@ sudo pacman -S gcc
 ```
 
 Once you have done that:
-1. Download the precompiled binary in the [Releases page](https://github.com/bsukalo/bfc/releases/)
+1. Download the precompiled binary in the [Releases page](https://github.com/bsukalo/bfc/releases)
 2. Mark it as executable:
 ```
 chmod +x bfc
@@ -32,13 +32,12 @@ sudo mv bfc /usr/local/bin/
 
 ## Usage
 ```
-bfc input.bf output.s
-gcc output.s -o output -nostdlib -static
+bfc input.bf output
 ./output
 ```
 or in one line:
 ```bash
-bfc input.bf output.s && gcc output.s -o output -nostdlib -static && ./output
+bfc input.bf output && ./output
 ```
 
 ## Examples & credit
