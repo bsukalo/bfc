@@ -20,7 +20,7 @@ sudo pacman -S gcc
 ```
 
 Once you have done that:
-1. Download the precompiled binary in the [Releases page](https://github.com/bsukalo/bfc/releases)
+1. Download the precompiled binary in the [Releases page](https://github.com/bnjjo/bfc/releases)
 2. Mark it as executable:
 ```
 chmod +x bfc
@@ -42,7 +42,7 @@ bfc input.bf output && ./output
 
 ## Examples & credit
 I have included a few fun brainfuck programs in the
-[*examples* directory of this repo.](https://github.com/bsukalo/bfc/tree/master/examples) Some of which are:
+[*examples* directory of this repo.](https://github.com/bnjjo/bfc/tree/master/examples) Some of which are:
 * **ascii.bf** – Prints all 256 standard + extended ASCII characters
 * **btc.bf** by Katie Ball – A brainfuck to C interpreter
 * **cat.bf** – A simple cat program, copies stdin to stdout (i.e. writes out whatever you input)
